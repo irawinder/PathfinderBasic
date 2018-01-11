@@ -22,6 +22,9 @@ ArrayList<Path> paths;
 //
 ArrayList<Agent> people;
 
+String imageFile = "Walls-Level4";
+String fileName;
+
 void initEnvironment() {
   //  An example gridded network of width x height (pixels) and node resolution (pixels)
   //
@@ -31,10 +34,12 @@ void initEnvironment() {
   network = new Graph(graphWidth, graphHeight, nodeResolution);
   //network.cullRandom(0.5); // Randomly eliminates 50% of the nodes in the network
   
+  fileName = "mesh_scale_" + network.SCALE + "_" + imageFile + ".tsv";
+  
   // An example boundary condition defined by a grayscale image sized within the canvas area
   //FORMAT: RasterCourse(PImage raster, float threshold, float radius, int rX, int rY, int rW, int rH)
   //
-  PImage courseImage = loadImage("Walls-Level4.png");
+  PImage courseImage = loadImage(imageFile + ".png");
   float threshold = 0.5; // 0.0 - 1.0: grayscale threshold for positive reading
   float sensitivity = 0.9; // 0.0 - 1.0: percent of pixels in search area needed for positive read
   float searchRadius = nodeResolution; // pixels around each node to search
@@ -106,7 +111,7 @@ void initPopulation() {
 void setup() {
   size(1000, 1000);
   initEnvironment();
-  loadMesh("mesh_scale_" + network.SCALE + ".tsv");
+  loadMesh();
   initPaths();
   initPopulation();
 }
@@ -118,6 +123,9 @@ void draw() {
   //
   tint(255, 100); // overlaid as an image
   image(rCourse.raster, rCourse.rX, rCourse.rY, rCourse.rW, rCourse.rH);
+  stroke(255);
+  noFill();
+  rect(rCourse.rX, rCourse.rY, rCourse.rW, rCourse.rH);
   
   //  Displays the Graph in grayscale.
   //
@@ -150,7 +158,7 @@ void draw() {
   textAlign(CENTER, CENTER);
   fill(255);
   textAlign(LEFT, TOP);
-  text("Press 'r' to regenerate OD matrix\nClick mouse to manually add or remove a node\nPress 's' abd 'l' to save and load graph-mesh to CSV file\nPress 'c' to clear any manual edits to mesh", 20, 20);
+  text("Press 'r' to regenerate OD matrix\nClick mouse to manually add or remove a node\nPress 's' and 'l' to save and load graph-mesh to CSV file\nPress 'c' to clear any manual edits to mesh", 20, 20);
   
 }
 
@@ -169,11 +177,11 @@ void keyPressed() {
       initPopulation();
       break;
     case 's':
-      saveMesh("mesh_scale_" + network.SCALE + ".tsv");
+      saveMesh();
       break;
     case 'l':
-      loadMesh("mesh_scale_" + network.SCALE + ".tsv");
-      initPaths();
+      loadMesh();
+      findPaths();
       initPopulation();
       break;
     case 'c':
@@ -191,7 +199,7 @@ void mouseClicked() {
   initPopulation();
 }
 
-void saveMesh(String fileName) {
+void saveMesh() {
   Table mesh = new Table();
   mesh.addColumn("x");
   mesh.addColumn("y");
@@ -204,7 +212,7 @@ void saveMesh(String fileName) {
   saveTable(mesh, fileName, "tsv");
 }
 
-void loadMesh(String fileName) {
+void loadMesh() {
   Table mesh = loadTable(fileName);
   ArrayList<PVector> locations = new ArrayList<PVector>();
   PVector current;
