@@ -150,7 +150,7 @@ void draw() {
   textAlign(CENTER, CENTER);
   fill(255);
   textAlign(LEFT, TOP);
-  text("Press 'r' to regenerate OD matrix\nClick mouse to add a custom node\nPress 's' abd 'l' to save and load graph-mesh to CSV file\nPress 'c' to clear any manual edits to mesh", 20, 20);
+  text("Press 'r' to regenerate OD matrix\nClick mouse to manually add or remove a node\nPress 's' abd 'l' to save and load graph-mesh to CSV file\nPress 'c' to clear any manual edits to mesh", 20, 20);
   
 }
 
