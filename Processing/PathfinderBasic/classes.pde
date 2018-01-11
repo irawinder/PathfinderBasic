@@ -68,9 +68,9 @@ class Graph {
   // is generated with a pixel spacing of 'scale'
   //
   Graph (int w, int h, float scale) {
-    U = int(w/scale);
-    V = int(h/scale);
     SCALE = scale;
+    U = int(w/SCALE);
+    V = int(h/SCALE);
     img = createGraphics(w, h);
     
     nodes = new ArrayList<Node>();
@@ -82,9 +82,71 @@ class Graph {
     generateEdges();
   }
   
+  void newNodes(ArrayList<PVector> locs) {
+    nodes.clear();
+    for (PVector l: locs) {
+      nodes.add( new Node(l.x, l.y) );
+    }
+    generateEdges();
+  }
+  
+  // Snap continuous coordinate to grid mesh
+  //
+  PVector snapXY(float x, float y) {
+    PVector snap = new PVector(0,0);
+    if (x % SCALE < SCALE/2) {
+      snap.x = x - x % SCALE - SCALE/2;
+    } else {
+      snap.x = x - x % SCALE + SCALE/2;
+    }
+    if (y % SCALE < SCALE/2) {
+      snap.y = y - y % SCALE - SCALE/2;
+    } else {
+      snap.y = y - y % SCALE + SCALE/2;
+    }
+    return snap;
+  }
+  
+  // Detect node at a specific location
+  //
+  boolean emptyNode(PVector loc) {
+    boolean empty = true;
+    for (Node n: nodes) {
+      if ( abs(n.loc.x - loc.x) < SCALE/2 && abs(n.loc.y - loc.y) < SCALE/2 ) {
+        empty = false;
+      }
+    }
+    return empty;
+  }
+ 
+  
+  // Toggle Snap Node
+  void toggleSnapNode(float x, float y) {
+    boolean empty = true;
+    Node n;
+    for (int i=0; i<nodes.size(); i++) {
+      n = nodes.get(i);
+      if ( abs(n.loc.x - x) < SCALE/2 && abs(n.loc.y - y) < SCALE/2 ) {
+        empty = false;
+        nodes.remove(i);
+        break;
+      }
+    }
+    if ( empty ) {
+      PVector newLocation = snapXY(x, y);
+      addNode(newLocation.x, newLocation.y);
+    }
+  }
+  
+  // Add a a Node
+  void addNode(float x, float y) {
+    Node n = new Node(x,y);
+    nodes.add(n);
+  }
+  
   // Removes Nodes that intersect with set of obstacles
   //
-  void applyObstacleCourse(ObstacleCourse c) {
+  void applyCourse(ObstacleCourse c) {
     for (int i=nodes.size()-1; i>=0; i--) {
       if(c.pointInCourse(nodes.get(i).loc)) {
         nodes.remove(i);
@@ -93,9 +155,15 @@ class Graph {
     generateEdges();
   }
   
-  // Removes nodes specified by a an image
-  void applyRaster() {
-    
+  // Removes nodes specified by a grayscale image
+  //
+  void applyCourse(RasterCourse c) {
+    for (int i=nodes.size()-1; i>=0; i--) {
+      if(c.pointInCourse(nodes.get(i).loc)) {
+        nodes.remove(i);
+      }
+    }
+    generateEdges();
   }
   
   // Removes Random Nodes from graph.  Useful for debugging
@@ -1024,5 +1092,71 @@ class Agent {
     fill(col, alpha);
     noStroke();
     ellipse(location.x, location.y, r, r);
+  }
+}
+
+class RasterCourse {
+  PImage raster;
+  // The effective position of the raster within the main canvas:
+  float rX, rY, rW, rH;
+  float scaleX, scaleY;
+  // Threshold and radius define the sensativity of the obstacle detection algorithm
+  float threshold, sensitivity;
+  int searchU, searchV, sampleSize;
+  boolean invert = false;
+  
+  RasterCourse(PImage raster, float sensitivity, float threshold, float radius, int rX, int rY, int rW, int rH) {
+    this.raster = raster;
+    this.threshold = 255.0*threshold;
+    this.sensitivity = sensitivity;
+    this.rX = rX;
+    this.rY = rY;
+    this.rW = rW;
+    this.rH = rH;
+    scaleX = float(raster.width)  / rW;
+    scaleY = float(raster.height) / rH;
+    searchU = int(radius*scaleX);
+    searchV = int(radius*scaleY);
+    sampleSize = (2*searchU+1)*(2*searchV+1);
+  }
+  
+  RasterCourse(PImage raster, float sensitivity, float threshold, float radius) {
+    this(raster, sensitivity, threshold, radius, 0, 0, raster.width, raster.height);
+  }
+  
+  void invert() {
+    invert = !invert;
+  }
+  
+  // Detect of a canvas Node is "blocked" by the RasterCourse
+  boolean pointInCourse(PVector canvasLoc) {
+    int u, v;
+    int positives = 0;
+    color sample;
+    float brightness;
+    boolean inCourse = false;
+    if (canvasLoc.x > rX && canvasLoc.x < rX+rW && canvasLoc.y > rY && canvasLoc.y < rY+rH) {
+      for (int i=-searchU; i<=searchU; i++) {
+        for (int j=-searchV; j<=searchV; j++) {
+          u = int( (canvasLoc.x - rX) * scaleX ) + i;
+          v = int( (canvasLoc.y - rY) * scaleY ) + j;
+          u = constrain(u, 0, raster.width-1);
+          v = constrain(v, 0, raster.height-1);
+          sample = raster.get(u, v);
+          if (invert) {
+            brightness = 255.0 - brightness(sample);
+          } else {
+            brightness = brightness(sample);
+          }
+          if ( brightness < threshold ) {
+            positives++;
+          }
+        }
+      }
+      if (positives > (1-sensitivity)*sampleSize) {
+        inCourse = true;
+      }
+    }
+    return inCourse;
   }
 }

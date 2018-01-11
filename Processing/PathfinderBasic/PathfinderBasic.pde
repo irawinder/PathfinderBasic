@@ -9,7 +9,8 @@
 
 // Objects to define our Network
 //
-ObstacleCourse course;
+ObstacleCourse oCourse;
+RasterCourse rCourse;
 Graph network;
 Pathfinder finder;
 
@@ -28,10 +29,25 @@ void initEnvironment() {
   int graphWidth = width;   // pixels
   int graphHeight = height; // pixels
   network = new Graph(graphWidth, graphHeight, nodeResolution);
-  network.cullRandom(0.5); // Randomly eliminates 50% of the nodes in the network
+  //network.cullRandom(0.5); // Randomly eliminates 50% of the nodes in the network
+  
+  // An example boundary condition defined by a grayscale image sized within the canvas area
+  //FORMAT: RasterCourse(PImage raster, float threshold, float radius, int rX, int rY, int rW, int rH)
+  //
+  PImage courseImage = loadImage("Walls-Level4.png");
+  float threshold = 0.5; // 0.0 - 1.0: grayscale threshold for positive reading
+  float sensitivity = 0.9; // 0.0 - 1.0: percent of pixels in search area needed for positive read
+  float searchRadius = nodeResolution; // pixels around each node to search
+  int rasterX = 20;
+  int rasterY = 100;
+  int rasterW = width  - 2*rasterX;
+  int rasterH = height - 2*rasterY;
+  rCourse = new RasterCourse(courseImage, sensitivity, threshold, searchRadius, rasterX, rasterY, rasterW, rasterH);
+  rCourse.invert();
+  network.applyCourse(rCourse);
 }
 
-void initPopulation() {
+void initPaths() {
   //  An example pathfinder object used to derive the shortest path
   //  setting enableFinder to "false" will bypass the A* algorithm
   //  and return a result akin to "as the bird flies"
@@ -47,13 +63,25 @@ void initPopulation() {
   for (int i=0; i<50; i++) {
     //  An example Origin and Desination between which we want to know the shortest path
     //
-    origin = new PVector(random(1.0)*width, random(1.0)*height);
-    destination = new PVector(random(1.0)*width, random(1.0)*height);
+    origin      = new PVector(random(0.2, 0.8)*width, random(0.2, 0.8)*height);
+    destination = new PVector(random(0.2, 0.8)*width, random(0.2, 0.8)*height);
     p = new Path(origin, destination);
     p.solve(finder);
     paths.add(p);
   }
+}
+
+void findPaths() {
+  finder = new Pathfinder(network);
   
+  for (Path p: paths) {
+    p.solve(finder);
+  }
+  
+  initPopulation();
+}
+
+void initPopulation() {
   //  An example population that traverses along shortest path calculation
   //  FORMAT: Agent(x, y, radius, speed, path);
   //
@@ -67,7 +95,7 @@ void initPopulation() {
     random = paths.get( int(random(paths.size())) );
     if (random.waypoints.size() > 1) {
       random_waypoint = int(random(random.waypoints.size()));
-      random_speed = random(0.1, 0.3);
+      random_speed = 3.0*random(0.1, 0.3);
       loc = random.waypoints.get(random_waypoint);
       person = new Agent(loc.x, loc.y, 5, random_speed, random.waypoints);
       people.add(person);
@@ -78,11 +106,18 @@ void initPopulation() {
 void setup() {
   size(1000, 1000);
   initEnvironment();
+  loadMesh("mesh_scale_" + network.SCALE + ".tsv");
+  initPaths();
   initPopulation();
 }
 
 void draw() {
   background(0);
+  
+  //Displays the RasterCourse grpahic
+  //
+  tint(255, 100); // overlaid as an image
+  image(rCourse.raster, rCourse.rX, rCourse.rY, rCourse.rW, rCourse.rH);
   
   //  Displays the Graph in grayscale.
   //
@@ -114,7 +149,8 @@ void draw() {
   
   textAlign(CENTER, CENTER);
   fill(255);
-  text("Press any key to regenerate path", width/2, height/2);
+  textAlign(LEFT, TOP);
+  text("Press 'r' to regenerate OD matrix\nClick mouse to add a custom node\nPress 's' abd 'l' to save and load graph-mesh to CSV file\nPress 'c' to clear any manual edits to mesh", 20, 20);
   
 }
 
@@ -127,5 +163,54 @@ ArrayList<PVector> personLocations(ArrayList<Agent> people) {
 }
 
 void keyPressed() {
+  switch(key) {
+    case 'r':
+      initPaths();
+      initPopulation();
+      break;
+    case 's':
+      saveMesh("mesh_scale_" + network.SCALE + ".tsv");
+      break;
+    case 'l':
+      loadMesh("mesh_scale_" + network.SCALE + ".tsv");
+      initPopulation();
+      break;
+    case 'c':
+      initEnvironment();
+      break;
+  }
+}
+
+void mouseClicked() {
+  network.toggleSnapNode(mouseX, mouseY);
+  network.generateEdges();
+  findPaths();
   initPopulation();
+}
+
+void saveMesh(String fileName) {
+  Table mesh = new Table();
+  mesh.addColumn("x");
+  mesh.addColumn("y");
+  TableRow row;
+  for(Node n: network.nodes) {
+    row = mesh.addRow();
+    row.setFloat(0, n.loc.x);
+    row.setFloat(1, n.loc.y);
+  }
+  saveTable(mesh, fileName, "tsv");
+}
+
+void loadMesh(String fileName) {
+  Table mesh = loadTable(fileName);
+  ArrayList<PVector> locations = new ArrayList<PVector>();
+  PVector current;
+  float x, y;
+  for (int i=0; i<mesh.getRowCount(); i++) {
+    x = mesh.getFloat(i, 0);
+    y = mesh.getFloat(i, 1);
+    current = new PVector(x, y);
+    locations.add(current);
+  }
+  network.newNodes(locations);
 }
