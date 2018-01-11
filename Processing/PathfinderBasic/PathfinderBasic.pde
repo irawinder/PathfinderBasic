@@ -173,10 +173,13 @@ void keyPressed() {
       break;
     case 'l':
       loadMesh("mesh_scale_" + network.SCALE + ".tsv");
+      initPaths();
       initPopulation();
       break;
     case 'c':
       initEnvironment();
+      initPaths();
+      initPopulation();
       break;
   }
 }
