@@ -11,6 +11,7 @@
 //
 ObstacleCourse oCourse;
 RasterCourse rCourse;
+RoadNetwork rNetwork;
 Graph network;
 Pathfinder finder;
 
@@ -22,20 +23,29 @@ ArrayList<Path> paths;
 //
 ArrayList<Agent> people;
 
+String roadFile = "city/roads";
 String imageFile = "Walls-Level4";
+//String imageFile = "city/roads";
 String fileName;
 
+boolean showFrameRate = false;
+
 void initEnvironment() {
+  //  A Road Network Created from a QGIS File
+  //
+  rNetwork = new RoadNetwork(roadFile + ".csv");
+  
   //  An example gridded network of width x height (pixels) and node resolution (pixels)
   //
-  int nodeResolution = 10;  // pixels
+  int nodeResolution = 5;  // pixels
   int graphWidth = width;   // pixels
   int graphHeight = height; // pixels
-  network = new Graph(graphWidth, graphHeight, nodeResolution);
+  network = new Graph(graphWidth, graphHeight, nodeResolution, rNetwork);
   //network.cullRandom(0.5); // Randomly eliminates 50% of the nodes in the network
   
   fileName = "mesh_scale_" + network.SCALE + "_" + imageFile + ".tsv";
   
+  /*
   // An example boundary condition defined by a grayscale image sized within the canvas area
   //FORMAT: RasterCourse(PImage raster, float threshold, float radius, int rX, int rY, int rW, int rH)
   //
@@ -50,6 +60,7 @@ void initEnvironment() {
   rCourse = new RasterCourse(courseImage, sensitivity, threshold, searchRadius, rasterX, rasterY, rasterW, rasterH);
   rCourse.invert();
   network.applyCourse(rCourse);
+  */
 }
 
 void initPaths() {
@@ -68,23 +79,10 @@ void initPaths() {
   for (int i=0; i<50; i++) {
     //  An example Origin and Desination between which we want to know the shortest path
     //
-    float random_o_y;
-    float random_d_y;
-    if (random(1) < 0.5) {
-      random_o_y = random(0.12, 0.38)*height;
-    } else {
-      random_o_y = random(0.62, 0.88)*height;
-    }
-    if (random(1) < 0.5) {
-      random_d_y = random(0.12, 0.38)*height;
-    } else {
-      random_d_y = random(0.62, 0.88)*height;
-    }
-    origin      = new PVector(random(0.2, 0.75)*width, random_o_y);
-    destination = new PVector(random(0.2, 0.75)*width, random_d_y);
-    if (random(1) < 0.2) {
-      destination = new PVector(origin.x + 11, origin.y + 11);
-    }
+    int rand1 = int( random(network.nodes.size()));
+    int rand2 = int( random(network.nodes.size()));
+    origin      = network.nodes.get(rand1).loc;
+    destination = network.nodes.get(rand2).loc;
     p = new Path(origin, destination);
     p.solve(finder);
     paths.add(p);
@@ -111,13 +109,13 @@ void initPopulation() {
   float random_speed;
   people = new ArrayList<Agent>();
   Path random;
-  for (int i=0; i<200; i++) {
+  for (int i=0; i<1000; i++) {
     random = paths.get( int(random(paths.size())) );
     if (random.waypoints.size() > 1) {
       random_waypoint = int(random(random.waypoints.size()));
       random_speed = 3.0*random(0.1, 0.3);
       loc = random.waypoints.get(random_waypoint);
-      person = new Agent(loc.x, loc.y, 5, random_speed, random.waypoints);
+      person = new Agent(loc.x, loc.y, 3, random_speed, random.waypoints);
       people.add(person);
     }
   }
@@ -127,7 +125,11 @@ void setup() {
   size(1000, 1000);
   //fullScreen();
   initEnvironment();
-  loadMesh();
+  //try {
+  //  loadMesh();
+  //} catch(RuntimeException e){
+  //  println("Network file not found. Try saving one first.");
+  //}
   initPaths();
   initPopulation();
 }
@@ -137,16 +139,16 @@ void draw() {
   
   //Displays the RasterCourse grpahic
   //
-  tint(255, 100); // overlaid as an image
-  image(rCourse.raster, rCourse.rX, rCourse.rY, rCourse.rW, rCourse.rH);
-  stroke(255);
+  //tint(255, 100); // overlaid as an image
+  //image(rCourse.raster, rCourse.rX, rCourse.rY, rCourse.rW, rCourse.rH);
+  //stroke(255);
   //noFill();
   //rect(rCourse.rX, rCourse.rY, rCourse.rW, rCourse.rH);
   
   //  Displays the Graph in grayscale.
   //
-  //tint(255, 75); // overlaid as an image
-  //image(network.img, 0, 0);
+  tint(255, 75); // overlaid as an image
+  image(network.img, 0, 0);
   
   //  Displays the path last calculated in Pathfinder.
   //  The results are overridden everytime findPath() is run.
@@ -168,13 +170,19 @@ void draw() {
   boolean collisionDetection = true;
   for (Agent p: people) {
     p.update(personLocations(people), collisionDetection);
-    p.display(#FFFF00, 255);
+    p.display(#FFFF00, 200);
   }
   
   textAlign(CENTER, CENTER);
   fill(255);
   textAlign(LEFT, TOP);
-  text("Press 'r' to regenerate OD matrix\nClick mouse to manually add or remove a node\nPress 's' and 'l' to save and load graph-mesh to CSV file\nPress 'c' to clear any manual edits to mesh", 20, 20);
+  String fRate = "";
+  if (showFrameRate) fRate = "\nFramerate: " + frameRate;
+  text("Press 'r' to regenerate OD matrix\n" +
+       "Click mouse to manually add or remove a node\n" +
+       "Press 's' and 'l' to save and load graph-mesh to CSV file\n" +
+       "Press 'c' to clear any manual edits to mesh\n" +
+       fRate, 20, 20);
   
 }
 
@@ -205,14 +213,19 @@ void keyPressed() {
       initPaths();
       initPopulation();
       break;
+    case 'f':
+      showFrameRate = !showFrameRate;
+      break;
   }
 }
 
 void mouseClicked() {
-  network.toggleSnapNode(mouseX, mouseY);
-  network.generateEdges();
-  findPaths();
-  initPopulation();
+  if (!network.roadNetwork) {
+    network.toggleSnapNode(mouseX, mouseY);
+    network.generateEdges();
+    findPaths();
+    initPopulation();
+  }
 }
 
 void saveMesh() {

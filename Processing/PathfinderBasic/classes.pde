@@ -30,18 +30,22 @@
 //
 class Node {
   PVector loc;
-  
+  int ID;
+  int gridX, gridY; 
   // Variables to describe relationship to adjacent neighbors
   //
   ArrayList<Integer> adj_ID;
   ArrayList<Float> adj_Dist;
   
-  Node (float x, float y) {
+  Node (float x, float y, float scale) {
     loc = new PVector(x,y);
     // Neighbor ID in ArrayList<Node>
     adj_ID = new ArrayList<Integer>();
     // Distance to Respective Neighbor in ArrayList<Node>
     adj_Dist = new ArrayList<Float>();
+    // Variable to describe local grid location for fast computation
+    gridX = int(x/scale);
+    gridY = int(y/scale);
   }
   
   void addNeighbor(int n, float d) {
@@ -63,29 +67,107 @@ class Graph {
   int U, V;
   float SCALE;
   PGraphics img; // Graph is drawn once into memory
+  boolean roadNetwork;
   
   // Using the canvas width and height in pixels, a gridded graph 
   // is generated with a pixel spacing of 'scale'
   //
   Graph (int w, int h, float scale) {
     SCALE = scale;
-    U = int(w/SCALE);
-    V = int(h/SCALE);
+    U = int(w / SCALE);
+    V = int(h / SCALE);
     img = createGraphics(w, h);
-    
+    roadNetwork = false;
     nodes = new ArrayList<Node>();
     for (int i=0; i<U; i++) {
       for (int j=0; j<V; j++) {
-        nodes.add(new Node(i*SCALE + scale/2, j*SCALE + scale/2));
+        nodes.add(new Node(i*SCALE + scale/2, j*SCALE + scale/2, SCALE));
       }
     }
     generateEdges();
   }
   
+  Graph(int w, int h, float scale, RoadNetwork r) {
+    SCALE = scale;
+    U = int(w  / SCALE);
+    V = int(h / SCALE);
+    img = createGraphics(w, h);
+    roadNetwork = true;
+    nodes = new ArrayList<Node>();
+    
+    // Add and 
+    
+    float x, y;
+    int numNodes = r.networkT.getRowCount();
+    Node n;
+    float canvasX, canvasY;
+    for (int i=0; i<numNodes; i++) {
+      // Status Output
+      if (i%1000 == 0) println("Loading Nodes: " + int(100*float(i)/nodes.size()) + "% complete");
+      x        = r.networkT.getFloat(i, 0);
+      y        = r.networkT.getFloat(i, 1);
+      canvasX  = w * (x - r.x_min) / r.x_w;
+      canvasY  = height - h * (y - r.y_min) / r.y_w;
+      n = new Node(canvasX, canvasY, SCALE);
+      n.clearNeighbors();
+      nodes.add(n);
+      
+    }
+    
+    // Connect per Object ID
+    int objectID, lastID = -1;
+    float dist;
+    for (int i=0; i<numNodes; i++) {
+      if (i%1000 == 0) println("Loading Segments: " + int(100*float(i)/nodes.size()) + "% complete");
+      if (i != 0) {
+      lastID   = r.networkT.getInt(i-1, 2);
+      }
+      objectID = r.networkT.getInt(i, 2);
+      if (lastID == objectID) {
+        dist = sqrt(sq(nodes.get(i).loc.x - nodes.get(i-1).loc.x) + sq(nodes.get(i).loc.y - nodes.get(i-1).loc.y));
+        nodes.get(i).addNeighbor(i-1, dist);
+        nodes.get(i-1).addNeighbor(i, dist);
+      }
+    }
+    
+    // Add and Connect Intersecting Segments
+    ArrayList<Node>[][] bucket = new ArrayList[U][V];
+    for (int u=0; u<U; u++) {
+      for (int v=0; v<V; v++) {
+        bucket[u][v] = new ArrayList<Node>();
+      }
+    }
+    int u, v;
+    for (int i=0; i<numNodes; i++) {
+      nodes.get(i).ID = i;
+      u = min(U-1, nodes.get(i).gridX);
+      v = min(V-1, nodes.get(i).gridY);
+      bucket[u][v].add(nodes.get(i));
+    }
+    for (int i=0; i<numNodes; i++) {
+      // Status Output
+      if (i%1000 == 0) println("Connecting Segments: " + int(100*float(i)/nodes.size()) + "% complete");
+      u = min(U-1, nodes.get(i).gridX);
+      v = min(V-1, nodes.get(i).gridY);
+      ArrayList<Node> nearby = bucket[u][v];
+      for (int j=0; j<nearby.size(); j++) {
+        dist = abs(nodes.get(i).loc.x - nearby.get(j).loc.x) + abs(nodes.get(i).loc.y - nearby.get(j).loc.y);
+        if (dist == 0) {
+          nodes.get(i).addNeighbor(nearby.get(j).ID, dist);
+          nodes.get(nearby.get(j).ID).addNeighbor(i, dist);
+        }
+      }
+    }
+    
+    
+    
+    render(255, 255);
+  }
+  
   void newNodes(ArrayList<PVector> locs) {
     nodes.clear();
     for (PVector l: locs) {
-      nodes.add( new Node(l.x, l.y) );
+      nodes.add( new Node(l.x, l.y, SCALE) );
     }
     generateEdges();
   }
@@ -140,7 +222,7 @@ class Graph {
   
   // Add a a Node
   void addNode(float x, float y) {
-    Node n = new Node(x,y);
+    Node n = new Node(x,y, SCALE);
     nodes.add(n);
   }
   
@@ -159,7 +241,7 @@ class Graph {
   //
   void applyCourse(RasterCourse c) {
     for (int i=nodes.size()-1; i>=0; i--) {
-      if(c.pointInCourse(nodes.get(i).loc)) {
+      if(c.pointInCourse(nodes.get(i).loc, "ADD")) {
         nodes.remove(i);
       }
     }
@@ -183,6 +265,7 @@ class Graph {
     float dist;
     
     for (int i=0; i<nodes.size(); i++) {
+      if (i%100 == 0) println(int(100*float(i)/nodes.size()) + "% complete");
       nodes.get(i).clearNeighbors();
       for (int j=0; j<nodes.size(); j++) {
         dist = sqrt(sq(nodes.get(i).loc.x - nodes.get(j).loc.x) + sq(nodes.get(i).loc.y - nodes.get(j).loc.y));
@@ -273,10 +356,12 @@ class Graph {
     
     // Draws Tangent Circles Centered at pathfinding nodes
     //
-    Node n;
-    for (int i=0; i<nodes.size(); i++) {
-      n = nodes.get(i);
-      img.ellipse(n.loc.x, n.loc.y, SCALE, SCALE);
+    if (!roadNetwork) {
+      Node n;
+      for (int i=0; i<nodes.size(); i++) {
+        n = nodes.get(i);
+        img.ellipse(n.loc.x, n.loc.y, SCALE, SCALE);
+      }
     }
     
     // Draws Edges that Connect Nodes
@@ -1129,7 +1214,7 @@ class RasterCourse {
   }
   
   // Detect of a canvas Node is "blocked" by the RasterCourse
-  boolean pointInCourse(PVector canvasLoc) {
+  boolean pointInCourse(PVector canvasLoc, String mode) {
     int u, v;
     int positives = 0;
     color sample;
@@ -1157,6 +1242,37 @@ class RasterCourse {
         inCourse = true;
       }
     }
+    if (mode.equals("ADD") && positives < sampleSize) inCourse = false;
     return inCourse;
+  }
+}
+
+class RoadNetwork {
+  Table networkT;
+  float x_min, x_max;
+  float y_min, y_max;
+  float x_w,   y_w;
+  
+  RoadNetwork(String fileName) {
+    networkT = loadTable(fileName, "header"); // formatted as QGIS Export of Extracted Nodes
+    float x, y;
+    for (int i=0; i<networkT.getRowCount(); i++) {
+      x = networkT.getFloat(i, 0);
+      y = networkT.getFloat(i, 1);
+      if (i==0) {
+        x_min = networkT.getFloat(i, 0);
+        x_max = networkT.getFloat(i, 0);
+        y_min = networkT.getFloat(i, 1);
+        y_max = networkT.getFloat(i, 1);
+      } else {
+        if (x < x_min) x_min = networkT.getFloat(i, 0);
+        if (x > x_max) x_max = networkT.getFloat(i, 0);
+        if (y < y_min) y_min = networkT.getFloat(i, 1);
+        if (y > y_max) y_max = networkT.getFloat(i, 1);
+      }
+    }
+    x_w = x_max - x_min;
+    y_w = y_max - y_min;
+    println(x_w, x_max, x_min, y_w, y_max, y_min);
   }
 }
