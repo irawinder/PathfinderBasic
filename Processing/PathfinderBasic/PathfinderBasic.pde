@@ -68,8 +68,23 @@ void initPaths() {
   for (int i=0; i<50; i++) {
     //  An example Origin and Desination between which we want to know the shortest path
     //
-    origin      = new PVector(random(0.2, 0.8)*width, random(0.2, 0.8)*height);
-    destination = new PVector(random(0.2, 0.8)*width, random(0.2, 0.8)*height);
+    float random_o_y;
+    float random_d_y;
+    if (random(1) < 0.5) {
+      random_o_y = random(0.12, 0.38)*height;
+    } else {
+      random_o_y = random(0.62, 0.88)*height;
+    }
+    if (random(1) < 0.5) {
+      random_d_y = random(0.12, 0.38)*height;
+    } else {
+      random_d_y = random(0.62, 0.88)*height;
+    }
+    origin      = new PVector(random(0.2, 0.75)*width, random_o_y);
+    destination = new PVector(random(0.2, 0.75)*width, random_d_y);
+    if (random(1) < 0.2) {
+      destination = new PVector(origin.x + 11, origin.y + 11);
+    }
     p = new Path(origin, destination);
     p.solve(finder);
     paths.add(p);
@@ -96,7 +111,7 @@ void initPopulation() {
   float random_speed;
   people = new ArrayList<Agent>();
   Path random;
-  for (int i=0; i<1000; i++) {
+  for (int i=0; i<200; i++) {
     random = paths.get( int(random(paths.size())) );
     if (random.waypoints.size() > 1) {
       random_waypoint = int(random(random.waypoints.size()));
@@ -110,6 +125,7 @@ void initPopulation() {
 
 void setup() {
   size(1000, 1000);
+  //fullScreen();
   initEnvironment();
   loadMesh();
   initPaths();
@@ -124,13 +140,13 @@ void draw() {
   tint(255, 100); // overlaid as an image
   image(rCourse.raster, rCourse.rX, rCourse.rY, rCourse.rW, rCourse.rH);
   stroke(255);
-  noFill();
-  rect(rCourse.rX, rCourse.rY, rCourse.rW, rCourse.rH);
+  //noFill();
+  //rect(rCourse.rX, rCourse.rY, rCourse.rW, rCourse.rH);
   
   //  Displays the Graph in grayscale.
   //
-  tint(255, 75); // overlaid as an image
-  image(network.img, 0, 0);
+  //tint(255, 75); // overlaid as an image
+  //image(network.img, 0, 0);
   
   //  Displays the path last calculated in Pathfinder.
   //  The results are overridden everytime findPath() is run.
@@ -143,7 +159,7 @@ void draw() {
   //  FORMAT: display(color, alpha)
   //
   for (Path p: paths) {
-    p.display(100, 50);
+    p.display(100, 20);
   }
   
   //  Update and Display the population of agents
@@ -152,7 +168,7 @@ void draw() {
   boolean collisionDetection = true;
   for (Agent p: people) {
     p.update(personLocations(people), collisionDetection);
-    p.display(#FFFF00, 150);
+    p.display(#FFFF00, 255);
   }
   
   textAlign(CENTER, CENTER);
