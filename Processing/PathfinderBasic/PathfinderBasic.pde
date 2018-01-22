@@ -76,7 +76,7 @@ void initPaths() {
   paths = new ArrayList<Path>();
   Path p;
   PVector origin, destination;
-  for (int i=0; i<50; i++) {
+  for (int i=0; i<100; i++) {
     //  An example Origin and Desination between which we want to know the shortest path
     //
     int rand1 = int( random(network.nodes.size()));
@@ -160,8 +160,11 @@ void draw() {
   //  Displays the path properties.
   //  FORMAT: display(color, alpha)
   //
-  for (Path p: paths) {
-    p.display(100, 20);
+  //for (Path p: paths) {
+  //  p.display(100, 20);
+  //}
+  for (int i=0; i<paths.size(); i+=5) {
+    paths.get(i).display(100, 20);
   }
   
   //  Update and Display the population of agents
