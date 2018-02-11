@@ -113,9 +113,9 @@ void initPopulation() {
     random = paths.get( int(random(paths.size())) );
     if (random.waypoints.size() > 1) {
       random_waypoint = int(random(random.waypoints.size()));
-      random_speed = 3.0*random(0.1, 0.3);
+      random_speed = 1.0*random(0.1, 0.3);
       loc = random.waypoints.get(random_waypoint);
-      person = new Agent(loc.x, loc.y, 3, random_speed, random.waypoints);
+      person = new Agent(loc.x, loc.y, 2, random_speed, random.waypoints);
       people.add(person);
     }
   }

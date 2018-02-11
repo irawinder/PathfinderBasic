@@ -4,7 +4,7 @@
  *
  *  CLASSES CONTAINED:
  *
- *    Pathfinder() - Method to calculate shortest path between to nodes in a graph/network
+ *    Pathfinder() - Method to calculate shortest path between two nodes in a graph/network
  *    Graph() - Network of nodes and wighted edges
  *    Node() - Fundamental building block of Graph()
  *    ObstacleCourse() - Contains multiple Obstacles; Allows editing, saving, and loading of configuration
@@ -89,7 +89,7 @@ class Graph {
   
   Graph(int w, int h, float scale, RoadNetwork r) {
     SCALE = scale;
-    U = int(w  / SCALE);
+    U = int(w / SCALE);
     V = int(h / SCALE);
     img = createGraphics(w, h);
     roadNetwork = true;
@@ -152,7 +152,7 @@ class Graph {
       ArrayList<Node> nearby = bucket[u][v];
       for (int j=0; j<nearby.size(); j++) {
         dist = abs(nodes.get(i).loc.x - nearby.get(j).loc.x) + abs(nodes.get(i).loc.y - nearby.get(j).loc.y);
-        if (dist == 0) {
+        if (dist < 0.00000002) {
           nodes.get(i).addNeighbor(nearby.get(j).ID, dist);
           nodes.get(nearby.get(j).ID).addNeighbor(i, dist);
         }
