@@ -103,7 +103,7 @@ class Graph {
     float canvasX, canvasY;
     for (int i=0; i<numNodes; i++) {
       // Status Output
-      if (i%1000 == 0) println("Loading Nodes: " + int(100*float(i)/nodes.size()) + "% complete");
+      //if (i%1000 == 0) println("Loading Nodes: " + int(100*float(i)/nodes.size()) + "% complete");
       x        = r.networkT.getFloat(i, 0);
       y        = r.networkT.getFloat(i, 1);
       canvasX  = w * (x - r.x_min) / r.x_w;
@@ -118,7 +118,7 @@ class Graph {
     int objectID, lastID = -1;
     float dist;
     for (int i=0; i<numNodes; i++) {
-      if (i%1000 == 0) println("Loading Segments: " + int(100*float(i)/nodes.size()) + "% complete");
+      //if (i%1000 == 0) println("Loading Segments: " + int(100*float(i)/nodes.size()) + "% complete");
       if (i != 0) {
       lastID   = r.networkT.getInt(i-1, 2);
       }
@@ -146,7 +146,7 @@ class Graph {
     }
     for (int i=0; i<numNodes; i++) {
       // Status Output
-      if (i%1000 == 0) println("Connecting Segments: " + int(100*float(i)/nodes.size()) + "% complete");
+      //if (i%1000 == 0) println("Connecting Segments: " + int(100*float(i)/nodes.size()) + "% complete");
       u = min(U-1, nodes.get(i).gridX);
       v = min(V-1, nodes.get(i).gridY);
       ArrayList<Node> nearby = bucket[u][v];
@@ -158,8 +158,6 @@ class Graph {
         }
       }
     }
-    
-    
     
     render(255, 255);
   }
@@ -1273,6 +1271,8 @@ class RoadNetwork {
     }
     x_w = x_max - x_min;
     y_w = y_max - y_min;
-    println(x_w, x_max, x_min, y_w, y_max, y_min);
+    println("Road Network Lat Range: " + x_min + " , " + x_max + "\n" + 
+            "Road Network Lon Range: " + y_min + " , " + y_max
+            );
   }
 }
