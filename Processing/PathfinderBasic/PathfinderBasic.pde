@@ -28,10 +28,21 @@ String imageFile = "Walls-Level4";
 //String imageFile = "city/roads";
 String fileName;
 
+//float latCtr = +42.350;
+//float lonCtr = -71.066;
+//float tol    =  0.035;
+//float latMin = latCtr - tol;
+//float latMax = latCtr + tol;
+//float lonMin = lonCtr - tol;
+//float lonMax = lonCtr + tol;
+
 boolean showFrameRate = false;
 
 void initEnvironment() {
   //  A Road Network Created from a QGIS File
+  //
+  // Use this function rarely when you need to clean a csv file. It saves a new file to the data folder
+  //rNetwork = new RoadNetwork(roadFile + ".csv", latMin, latMax, lonMin, lonMax); 
   //
   rNetwork = new RoadNetwork(roadFile + ".csv");
   
@@ -76,7 +87,7 @@ void initPaths() {
   paths = new ArrayList<Path>();
   Path p;
   PVector origin, destination;
-  for (int i=0; i<100; i++) {
+  for (int i=0; i<1000; i++) {
     //  An example Origin and Desination between which we want to know the shortest path
     //
     int rand1 = int( random(network.nodes.size()));
@@ -109,7 +120,7 @@ void initPopulation() {
   float random_speed;
   people = new ArrayList<Agent>();
   Path random;
-  for (int i=0; i<1000; i++) {
+  for (int i=0; i<2000; i++) {
     random = paths.get( int(random(paths.size())) );
     if (random.waypoints.size() > 1) {
       random_waypoint = int(random(random.waypoints.size()));
@@ -163,9 +174,9 @@ void draw() {
   //for (Path p: paths) {
   //  p.display(100, 20);
   //}
-  for (int i=0; i<paths.size(); i+=5) {
-    paths.get(i).display(100, 20);
-  }
+  //for (int i=0; i<paths.size(); i+=5) {
+  //  paths.get(i).display(100, 20);
+  //}
   
   //  Update and Display the population of agents
   //  FORMAT: display(color, alpha)

@@ -26,7 +26,7 @@
  *
  */
 
-// Nodes are the findamental building block of our graph
+// Nodes are the fundamental building block of our graph
 //
 class Node {
   PVector loc;
@@ -95,8 +95,6 @@ class Graph {
     roadNetwork = true;
     nodes = new ArrayList<Node>();
     
-    // Add and 
-    
     float x, y;
     int numNodes = r.networkT.getRowCount();
     Node n;
@@ -116,7 +114,7 @@ class Graph {
     
     // Connect per Object ID
     int objectID, lastID = -1;
-    float dist;
+    float dist, speed;
     for (int i=0; i<numNodes; i++) {
       //if (i%1000 == 0) println("Loading Segments: " + int(100*float(i)/nodes.size()) + "% complete");
       if (i != 0) {
@@ -124,7 +122,9 @@ class Graph {
       }
       objectID = r.networkT.getInt(i, 2);
       if (lastID == objectID) {
+        speed = r.networkT.getFloat(i, 15);
         dist = sqrt(sq(nodes.get(i).loc.x - nodes.get(i-1).loc.x) + sq(nodes.get(i).loc.y - nodes.get(i-1).loc.y));
+        dist /= speed;
         nodes.get(i).addNeighbor(i-1, dist);
         nodes.get(i-1).addNeighbor(i, dist);
       }
@@ -152,7 +152,9 @@ class Graph {
       ArrayList<Node> nearby = bucket[u][v];
       for (int j=0; j<nearby.size(); j++) {
         dist = abs(nodes.get(i).loc.x - nearby.get(j).loc.x) + abs(nodes.get(i).loc.y - nearby.get(j).loc.y);
-        if (dist < 0.00000002) {
+        if (dist < 0.00000002) { // distance in decimal degrees
+          speed = r.networkT.getFloat(i, 15);
+          dist /= speed;
           nodes.get(i).addNeighbor(nearby.get(j).ID, dist);
           nodes.get(nearby.get(j).ID).addNeighbor(i, dist);
         }
@@ -1271,8 +1273,35 @@ class RoadNetwork {
     }
     x_w = x_max - x_min;
     y_w = y_max - y_min;
-    println("Road Network Lat Range: " + x_min + " , " + x_max + "\n" + 
-            "Road Network Lon Range: " + y_min + " , " + y_max
+    
+    printExtents();
+  }
+  
+  RoadNetwork(String fileName, float latMin, float latMax, float lonMin, float lonMax) {
+  // Use rarely to "clean" and save a CSV file of a roadnetwork that is larger than you need
+    networkT = loadTable(fileName, "header"); // formatted as QGIS Export of Extracted Nodes
+    x_min = lonMin;
+    x_max = lonMax;
+    y_min = latMin;
+    y_max = latMax;
+    x_w = x_max - x_min;
+    y_w = y_max - y_min;
+    for (int i=networkT.getRowCount()-1; i > 0; i--) {
+      if (networkT.getFloat(i, 0) < x_min || networkT.getFloat(i, 0) > x_max || 
+          networkT.getFloat(i, 1) < y_min || networkT.getFloat(i, 1) > y_max ) {
+      
+        networkT.removeRow(i);  
+        println(i);
+      }
+    }
+    
+    printExtents();
+    saveTable(networkT, "data/city/roads_smaller.csv");
+  }
+  
+  void printExtents() {
+    println("Road Network Lon Range: " + x_min + " , " + x_max + "\n" + 
+            "Road Network Lat Range: " + y_min + " , " + y_max
             );
   }
 }
